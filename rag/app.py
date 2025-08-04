@@ -1,59 +1,47 @@
-# ~/chatdoc-plus/rag/app.py
+# rag/app.py
 import gradio as gr
-from langchain.memory import ConversationBufferMemory
-from langchain.chains import ConversationalRetrievalChain
-from langchain.schema import HumanMessage, SystemMessage
-from langchain.chat_models import ChatOpenAI  # 先用占位；换成本地模型见下方注释
-from pathlib import Path
-from .core import build_or_load_db
+from core import build_or_update_index, retrieve, has_index
+from llm_qwen import generate_with_cot
 
-INDEX_DIR = "../index/faiss_index"
+# —— 系统提示词（有/无检索两种）——
+SYS_RAG = (
+    "你是严谨的中文金融助手，必须依据提供的【检索片段】回答；"
+    "若片段中没有相关信息，明确说明“根据材料无法确定”。"
+    "回答要点化，并在末尾用 [1][2]… 标注引用片段编号。"
+)
+SYS_PLAIN = (
+    "你是中文金融助手。当前没有检索片段，请基于常识给出简洁、要点化回答，"
+    "并提示内容可能不够精准。"
+)
 
-def build_chain(pdf_dir="../data/pdfs"):
-    pdf_paths = [str(p) for p in Path(pdf_dir).glob("*.pdf")]
-    db = build_or_load_db(pdf_paths, INDEX_DIR)
+def build_index_ui(file):
+    build_or_update_index(file.name)
+    return "✔️ 索引已更新"
 
-    # —— 先用 OpenAI 兼容，等你把本地 LLM（如 vLLM/llama-cpp）接上再替换 ——
-    llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0.2)
-
-    memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
-    chain = ConversationalRetrievalChain.from_llm(
-        llm=llm,
-        retriever=db.as_retriever(search_kwargs={"k": 4}),
-        memory=memory,
-        return_source_documents=True
-    )
-    return chain
-
-chain = None
-
-def build_index(_):
-    global chain
-    chain = build_chain()
-    return "✅ 索引构建完成，可以开始问答。"
-
-def ask(q):
-    if chain is None:
-        return "请先点击【构建/加载索引】", None
-    res = chain({"question": q})
-    ans = res["answer"]
-    srcs = res.get("source_documents", [])
-    refs = "\n".join([f"- {s.metadata.get('source','')}: p.{s.metadata.get('page', '?')}"
-                      for s in srcs])
-    return ans, refs or "（无检索引用）"
+def ask(query):
+    docs = retrieve(query, k=4)          # 没索引时返回 []
+    if docs:
+        context = "\n\n".join([f"[{i+1}] {d.page_content}" for i, d in enumerate(docs)])
+        prompt = f"{SYS_RAG}\n\n【检索片段】\n{context}\n\n【问题】{query}\n【回答】"
+    else:
+        prompt = f"{SYS_PLAIN}\n\n【问题】{query}\n【回答】"
+    try:
+        return generate_with_cot(prompt, max_new_tokens=300)
+    except Exception as e:
+        return f"❌ 推理出错：{e}"
 
 with gr.Blocks() as demo:
-    gr.Markdown("### ChatDoc-Plus | 金融 PDF RAG 多轮问答（MVP）")
+    gr.Markdown("### ChatDoc-Plus · 金融文档问答（RAG + Qwen）")
     with gr.Row():
-        pdf_btn = gr.Button("构建/加载索引")
-    with gr.Row():
-        q = gr.Textbox(label="你的问题（支持连续追问）")
-    with gr.Row():
-        a = gr.Textbox(label="回答", lines=8)
-    with gr.Row():
-        refs = gr.Textbox(label="引用片段", lines=6)
-    pdf_btn.click(build_index, outputs=a)
-    q.submit(ask, inputs=q, outputs=[a, refs])
+        up = gr.File(label="上传PDF")
+        status = gr.Textbox(label="索引状态", interactive=False)
+    up.upload(build_index_ui, inputs=up, outputs=status)
+
+    q = gr.Textbox(label="问题", placeholder="例：介绍金融知识普及读本")
+    out = gr.Textbox(label="回答", lines=12)
+    btn = gr.Button("提问")
+    btn.click(ask, inputs=q, outputs=out)
+    q.submit(ask, inputs=q, outputs=out)
 
 if __name__ == "__main__":
     demo.launch(server_name="0.0.0.0", server_port=7860)
