@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+env/
+rag_env/
+
+# Data / Index / Outputs
+data/**/*
+!data/README.md
+index/**/*
+output/**/*
+outputs/**/*
+logs/**/*
+wandb/**
+
+# Models & Checkpoints (不要把大权重传仓库)
+models/**/*
+!models/README.md
+
+# Gradio cache
+gradio_cached_examples/
+
+# OS/IDE
+.DS_Store
+.vscode/
