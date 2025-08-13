@@ -1,0 +1,19 @@
+transformers>=4.41.0
+accelerate>=0.31.0
+bitsandbytes>=0.43.1
+sentence-transformers>=3.0.1
+langchain>=0.2.7
+langchain-community>=0.2.7
+langchain-text-splitters>=0.2.2
+faiss-cpu>=1.8.0
+PyMuPDF>=1.24.7
+gradio>=4.41.0
+modelscope>=1.15.0
+datasets>=2.20.0
+peft>=0.11.1
+trl>=0.9.6
+protobuf<5  # for some TRL/RLHF stacks compatibility
+FlagEmbedding>=1.2.10
+rank-bm25>=0.2.2
+jieba>=0.42.1
+
