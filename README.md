@@ -109,14 +109,30 @@ python rag/app.py
 ```
 chatdoc-plus/
 ├── rag/
-│   ├── app.py            # Gradio 应用（多轮对话、证据、重排）
-│   ├── core.py           # 加载/切分/嵌入/索引/检索/重排与引用构建
-│   ├── config.py         # 环境变量与默认配置
-│   └── eval.py           # 简易检索评测脚本
-├── sft/train_sft.py      # SFT 最小可运行脚本（LoRA + TRL）
-├── dpo/train_dpo.py      # DPO 最小可运行脚本（LoRA + TRL）
-├── models/download_ms.py # 模型下载（ModelScope）
-├── quick_infer.py        # 纯 LLM 推理样例
+│   ├── app.py             # Gradio 对话 UI（ChatGPT 样式/流式/反馈）
+│   ├── core.py            # 加载/切分/嵌入/索引/检索/重排
+│   ├── config.py          # 配置与环境变量
+│   ├── llm_qwen.py        # 本地 Qwen 4bit 推理 + LoRA 适配器加载
+│   ├── hybrid.py          # BM25 + RRF 融合
+│   ├── packing.py         # token 预算装配与相似度去重
+│   ├── query.py           # 闲聊旁路与轻量 rewrite
+│   ├── graph.py           # 最小状态机（rewrite→retrieve→pack→verify→generate）
+│   ├── telemetry.py       # 轻量监控（阶段耗时/引用质量写入日志）
+│   ├── eval.py            # 检索评测（单配置/网格 CSV）
+│   └── assets/            # 头像等资源
+├── sft/train_sft.py       # SFT（LoRA + TRL）
+├── dpo/train_dpo.py       # DPO（LoRA + TRL）
+├── grpo/train_grpo.py     # GRPO（LoRA + TRL）
+├── data/
+│   ├── sft.jsonl
+│   ├── dpo.jsonl
+│   ├── grpo.jsonl
+│   ├── eval_retrieval.json
+│   ├── feedback_to_sft.py # 反馈→SFT 数据
+│   └── feedback_to_dpo.py # 反馈→DPO 数据
+├── models/download_ms.py  # 模型下载（ModelScope）
+├── index/                 # 本地索引（已在 .gitignore 中排除）
+├── quick_infer.py         # 纯 LLM 推理样例
 └── requirements.txt
 ```
 
